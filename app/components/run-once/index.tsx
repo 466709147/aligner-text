@@ -30,17 +30,57 @@ const RunOnce: FC<IRunOnceProps> = ({
 
   const onClear = () => {
     const newInputs: Record<string, any> = {}
+    // Also clear the static fields
+    newInputs['source_text'] = ''
+    newInputs['translated_text'] = ''
+    // Clear dynamic fields
     promptConfig.prompt_variables.forEach((item) => {
       newInputs[item.key] = ''
     })
     onInputsChange(newInputs)
+    // TODO: You might also want to clear vision files here if needed
+    // onVisionFilesChange([])
   }
+
+  // Helper function to handle input changes
+  const handleInputChange = (key: string, value: any) => {
+    onInputsChange({ ...inputs, [key]: value });
+  };
+
 
   return (
     <div className="">
       <section>
         {/* input form */}
         <form>
+          {/* ===== START: Add your static text areas here ===== */}
+          <div className='w-full mt-4'>
+            <label className='text-gray-900 text-sm font-medium'>Source Text</label> {/* You can use t('') for translation */}
+            <div className='mt-2'>
+              <textarea
+                className="block w-full h-[104px] p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
+                placeholder="Enter source text..." // Add placeholder
+                value={inputs['source_text'] || ''} // Use the key expected by the workflow
+                onChange={(e) => handleInputChange('source_text', e.target.value)} // Update parent state
+              />
+            </div>
+          </div>
+
+          <div className='w-full mt-4'>
+            <label className='text-gray-900 text-sm font-medium'>Translated Text</label> {/* You can use t('') for translation */}
+            <div className='mt-2'>
+              <textarea
+                className="block w-full h-[104px] p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
+                placeholder="Enter translated text..." // Add placeholder
+                value={inputs['translated_text'] || ''} // Use the key expected by the workflow
+                onChange={(e) => handleInputChange('translated_text', e.target.value)} // Update parent state
+              />
+            </div>
+          </div>
+          {/* ===== END: Add your static text areas here ===== */}
+
+
+          {/* Dynamic variables from promptConfig */}
           {promptConfig.prompt_variables.map(item => (
             <div className='w-full mt-4' key={item.key}>
               <label className='text-gray-900 text-sm font-medium'>{item.name}</label>
@@ -48,8 +88,9 @@ const RunOnce: FC<IRunOnceProps> = ({
                 {item.type === 'select' && (
                   <Select
                     className='w-full'
+                    // Use handleInputChange helper
                     defaultValue={inputs[item.key]}
-                    onSelect={(i) => { onInputsChange({ ...inputs, [item.key]: i.value }) }}
+                    onSelect={(i) => handleInputChange(item.key, i.value)}
                     items={(item.options || []).map(i => ({ name: i, value: i }))}
                     allowSearch={false}
                     bgClassName='bg-gray-50'
@@ -60,8 +101,9 @@ const RunOnce: FC<IRunOnceProps> = ({
                     type="text"
                     className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
                     placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                    value={inputs[item.key]}
-                    onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
+                    value={inputs[item.key] || ''}
+                    // Use handleInputChange helper
+                    onChange={(e) => handleInputChange(item.key, e.target.value)}
                     maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
                   />
                 )}
@@ -69,8 +111,9 @@ const RunOnce: FC<IRunOnceProps> = ({
                   <textarea
                     className="block w-full h-[104px] p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
                     placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                    value={inputs[item.key]}
-                    onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
+                    value={inputs[item.key] || ''}
+                    // Use handleInputChange helper
+                    onChange={(e) => handleInputChange(item.key, e.target.value)}
                   />
                 )}
                 {item.type === 'number' && (
@@ -78,8 +121,9 @@ const RunOnce: FC<IRunOnceProps> = ({
                     type="number"
                     className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
                     placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                    value={inputs[item.key]}
-                    onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
+                    value={inputs[item.key] || ''}
+                    // Use handleInputChange helper
+                    onChange={(e) => handleInputChange(item.key, e.target.value)}
                   />
                 )}
               </div>
@@ -103,7 +147,8 @@ const RunOnce: FC<IRunOnceProps> = ({
               </div>
             )
           }
-          {promptConfig.prompt_variables.length > 0 && (
+          {/* Separator line */}
+          {(promptConfig.prompt_variables.length > 0 || visionConfig?.enabled) && ( // Add condition for visionConfig
             <div className='mt-4 h-[1px] bg-gray-100'></div>
           )}
           <div className='w-full mt-4'>
@@ -111,15 +156,15 @@ const RunOnce: FC<IRunOnceProps> = ({
               <Button
                 className='!h-8 !p-3'
                 onClick={onClear}
-                disabled={false}
+                disabled={false} // You might want to disable based on responsing state later
               >
                 <span className='text-[13px]'>{t('common.operation.clear')}</span>
               </Button>
               <Button
                 type="primary"
                 className='!h-8 !pl-3 !pr-4'
-                onClick={onSend}
-                disabled={false}
+                onClick={onSend} // This calls the parent's handleSend function
+                disabled={false} // You might want to disable based on responsing state later
               >
                 <PlayIcon className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
                 <span className='text-[13px]'>{t('app.generation.run')}</span>
